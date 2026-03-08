@@ -3,10 +3,11 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { generateOTP } from "../utils/generateOTP.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { sendSMS } from "../utils/sendSms.js";
 
 export const registerUser = async (req, res) => {
     try {
-        const {name, email, password} = req.body;
+        const {name, email, password,phone} = req.body;
         const exitingUser = await User.findOne({email});
 
         if(!name || !email || !password) {
@@ -20,12 +21,19 @@ export const registerUser = async (req, res) => {
         const user = await User.create({
             name,
             email,
+            phone: phone || null,
             password:hashedPassword,
             otp,
             otpExpire: Date.now() + 5 * 60 * 1000
         });
-        await sendEmail(email, "Agro-vision OTP Verification",`Welcome to Agro Vision Your otp is ${otp}`);
-        return res.json({message: "OTP sent to your email"});
+        const msg = `Hello ${name} Welcome to Agro Vision Your otp is ${otp} valid for 5 minutes`;
+        // await sendEmail(email, "Agro-vision OTP Verification",`Welcome to Agro Vision Your otp is ${otp} valid for 5 minutes`);
+        await sendEmail(email, msg);
+
+        if(phone) {
+            await sendSMS(phone,msg)
+        }
+        return res.json({message: "OTP sent to your email or phone number"});
     } catch (error) {
         console.error("Register error: ", error);
         res.status(500).json(error);
